@@ -514,7 +514,7 @@ public sealed class PrToolService
         if (!beforeFound && !afterFound)
             return Failure("File path not found in PR source/target commits.", "ADO_HTTP_404");
 
-        var diffResult = UnifiedDiff.Build(beforeContent, afterContent, contextLines, _options.MaxDiffChars, hunkOffset);
+        var diffResult = UnifiedDiff.Build(beforeContent, afterContent, contextLines, _options.MaxDiffChars, hunkOffset, _options.MaxDiffLines);
         var normalizedPath = path.StartsWith('/') ? path : "/" + path;
 
         var hunks = diffResult.Hunks.Select(hunk => new
@@ -576,7 +576,8 @@ public sealed class PrToolService
             : new List<JsonElement>();
 
         var filtered = allThreads
-            .Where(t => status == "all" || (t.TryGetProperty("status", out var s) && s.GetString() == "active"))
+            .Where(t => t.ValueKind == JsonValueKind.Object &&
+                        (status == "all" || (t.TryGetProperty("status", out var s) && s.GetString() == "active")))
             .ToList();
 
         var totalCount = filtered.Count;
@@ -587,11 +588,11 @@ public sealed class PrToolService
         var threads = page.Select(thread =>
         {
             var comments = thread.TryGetProperty("comments", out var c) && c.ValueKind == JsonValueKind.Array
-                ? c.EnumerateArray().ToList() : new List<JsonElement>();
+                ? c.EnumerateArray().Where(e => e.ValueKind == JsonValueKind.Object).ToList() : new List<JsonElement>();
             var first = comments.FirstOrDefault();
-            var preview = first.ValueKind != JsonValueKind.Undefined && first.TryGetProperty("content", out var ct)
+            var preview = first.ValueKind == JsonValueKind.Object && first.TryGetProperty("content", out var ct)
                 ? TrimText(ct.GetString(), 120) : string.Empty;
-            var filePath = thread.TryGetProperty("threadContext", out var ctx) && ctx.TryGetProperty("filePath", out var fp)
+            var filePath = thread.TryGetProperty("threadContext", out var ctx) && ctx.ValueKind == JsonValueKind.Object && ctx.TryGetProperty("filePath", out var fp)
                 ? fp.GetString() : null;
             var (lineNumber, side) = ExtractThreadLineContext(thread);
             return new
@@ -631,10 +632,10 @@ public sealed class PrToolService
             return Failure("Thread not found in pull request.", "ADO_HTTP_404");
 
         var comments = thread.TryGetProperty("comments", out var c) && c.ValueKind == JsonValueKind.Array
-            ? c.EnumerateArray().Select(comment => new
+            ? c.EnumerateArray().Where(e => e.ValueKind == JsonValueKind.Object).Select(comment => new
             {
                 id = comment.GetProperty("id").GetInt32(),
-                author = comment.TryGetProperty("author", out var a) ? a.GetProperty("displayName").GetString() : null,
+                author = comment.TryGetProperty("author", out var a) && a.ValueKind == JsonValueKind.Object ? a.GetProperty("displayName").GetString() : null,
                 publishedAt = comment.TryGetProperty("publishedDate", out var pd) ? pd.GetDateTimeOffset() : (DateTimeOffset?)null,
                 content = comment.TryGetProperty("content", out var ct) ? ct.GetString() ?? string.Empty : string.Empty
             }).ToList()
@@ -1036,14 +1037,14 @@ public sealed class PrToolService
 
         var changedFiles = returnedFiles.Select(f => new { path = f.Path, changeType = f.ChangeType, originalPath = f.OriginalPath });
 
-        var threads = returnedThreadElems.Select(thread =>
+        var threads = returnedThreadElems.Where(t => t.ValueKind == JsonValueKind.Object).Select(thread =>
         {
             var comments = thread.TryGetProperty("comments", out var c) && c.ValueKind == JsonValueKind.Array
-                ? c.EnumerateArray().ToList() : new List<JsonElement>();
+                ? c.EnumerateArray().Where(e => e.ValueKind == JsonValueKind.Object).ToList() : new List<JsonElement>();
             var first = comments.FirstOrDefault();
-            var preview = first.ValueKind != JsonValueKind.Undefined && first.TryGetProperty("content", out var ct)
+            var preview = first.ValueKind == JsonValueKind.Object && first.TryGetProperty("content", out var ct)
                 ? TrimText(ct.GetString(), 120) : string.Empty;
-            var filePath = thread.TryGetProperty("threadContext", out var ctx) && ctx.TryGetProperty("filePath", out var fp)
+            var filePath = thread.TryGetProperty("threadContext", out var ctx) && ctx.ValueKind == JsonValueKind.Object && ctx.TryGetProperty("filePath", out var fp)
                 ? fp.GetString() : null;
             var (lineNumber, lineSide) = ExtractThreadLineContext(thread);
             return new

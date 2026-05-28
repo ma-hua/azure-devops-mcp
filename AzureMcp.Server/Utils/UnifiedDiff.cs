@@ -25,16 +25,25 @@ public static class UnifiedDiff
     /// Builds a structured diff. When <paramref name="hunkOffset"/> is &gt; 0 the first N hunks are
     /// skipped (cursor-based pagination). Truncation always occurs at hunk boundaries so no hunk is
     /// ever split mid-way; at least one hunk is always returned even if it exceeds <paramref name="maxChars"/>.
+    /// <paramref name="maxLines"/> caps each side's line count; if exceeded an <see cref="InvalidOperationException"/>
+    /// is thrown so callers can surface a structured error instead of hanging on an O(n×m) LCS computation.
     /// </summary>
     public static DiffResult Build(
         string beforeText,
         string afterText,
         int contextLines,
         int maxChars,
-        int hunkOffset = 0)
+        int hunkOffset = 0,
+        int maxLines = 2000)
     {
         var before = SplitLines(beforeText);
         var after = SplitLines(afterText);
+
+        if (before.Length > maxLines || after.Length > maxLines)
+            throw new InvalidOperationException(
+                $"File is too large for in-process diff ({before.Length} × {after.Length} lines; limit is {maxLines} per side). " +
+                $"Use get_pr_file_content to retrieve specific line ranges instead.");
+
         var lcs = BuildLcs(before, after);
 
         var allHunks = BuildAllHunks(before, after, lcs, contextLines);

@@ -11,6 +11,7 @@ public sealed class AdoOptions
     public int MaxChanges { get; init; } = 200;
     public int MaxRepositoryScan { get; init; } = 30;
     public int MaxDiffChars { get; init; } = 8000;
+    public int MaxDiffLines { get; init; } = 2000;
     public int MaxSnapshotLines { get; init; } = 300;
 
     public static AdoOptions FromEnvironment()
@@ -33,6 +34,7 @@ public sealed class AdoOptions
             MaxChanges = ParseInt("AZDO_MAX_CHANGES", 200, 10, 2000),
             MaxRepositoryScan = ParseInt("AZDO_MAX_REPOSITORY_SCAN", 30, 5, 200),
             MaxDiffChars = ParseInt("AZDO_MAX_DIFF_CHARS", 8000, 1000, 50000),
+            MaxDiffLines = ParseInt("AZDO_MAX_DIFF_LINES", 2000, 100, 10000),
             MaxSnapshotLines = ParseInt("AZDO_MAX_SNAPSHOT_LINES", 300, 50, 2000)
         };
     }
