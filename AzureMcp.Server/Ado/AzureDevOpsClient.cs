@@ -43,10 +43,11 @@ public sealed class AzureDevOpsClient
         string repository,
         string status,
         int top,
+        int skip,
         CancellationToken cancellationToken)
     {
         var repoSegment = Uri.EscapeDataString(repository);
-        var query = $"searchCriteria.status={Uri.EscapeDataString(status)}&$top={top}";
+        var query = $"searchCriteria.status={Uri.EscapeDataString(status)}&$top={top}&$skip={skip}";
         var url = BuildUrl(organization, project, $"_apis/git/repositories/{repoSegment}/pullrequests", query);
 
         var payload = await GetJsonAsync(url, cancellationToken);
@@ -85,10 +86,18 @@ public sealed class AzureDevOpsClient
     }
 
     /// <summary>Gets the changed files for a specific PR iteration. Response has a <c>changeEntries</c> array.</summary>
-    public async Task<JsonElement> GetPullRequestIterationChangesAsync(string organization, string project, string repository, int pullRequestId, int iterationId, CancellationToken cancellationToken)
+    public async Task<JsonElement> GetPullRequestIterationChangesAsync(
+        string organization,
+        string project,
+        string repository,
+        int pullRequestId,
+        int iterationId,
+        int skip,
+        CancellationToken cancellationToken)
     {
         var repoSegment = Uri.EscapeDataString(repository);
-        var url = BuildUrl(organization, project, $"_apis/git/repositories/{repoSegment}/pullRequests/{pullRequestId}/iterations/{iterationId}/changes", $"$top={_options.MaxChanges}");
+        var query = $"$top={_options.MaxChanges}&$skip={skip}";
+        var url = BuildUrl(organization, project, $"_apis/git/repositories/{repoSegment}/pullRequests/{pullRequestId}/iterations/{iterationId}/changes", query);
         var payload = await GetJsonAsync(url, cancellationToken);
         return payload.RootElement.Clone();
     }
