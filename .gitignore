@@ -24,23 +24,6 @@ obj/
 .env.*
 !.env.example
 
-# NuGet
-packages/
-*.nupkg
-*.snupkg
-project.lock.json
-project.assets.json
-
-# Test results
-TestResults/
-*.trx
-*.coverage
-*.coveragexml
-
-# Publish output
-publish/
-
 # OS files
 .DS_Store
 Thumbs.db
-desktop.ini
